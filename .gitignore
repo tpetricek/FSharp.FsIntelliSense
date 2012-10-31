@@ -3,3 +3,4 @@ bin/*
 src/obj/*
 src/bin/*
 src/*.userprefs
+src/*.suo

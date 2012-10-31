@@ -10,6 +10,26 @@ open System
 open Microsoft.FSharp.Compiler.SourceCodeServices
 
 // --------------------------------------------------------------------------------------
+// Simple implementation of LazyList 
+// --------------------------------------------------------------------------------------
+
+type LazyList<'T> = 
+  | Nil 
+  | Cons of 'T * Lazy<LazyList<'T>>
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module LazyList =
+  let ofSeq (s:seq<'T>) = 
+    let en = s.GetEnumerator()
+    let rec take() = 
+      if en.MoveNext() then 
+        Cons(en.Current, lazy take())
+      else 
+        en.Dispose()
+        Nil
+    take()
+
+// --------------------------------------------------------------------------------------
 // Simple monadic parser generator that we use in the IntelliSense
 // --------------------------------------------------------------------------------------
 
@@ -47,7 +67,7 @@ module Parser =
   // --------------------------------------------------------------------------------------
   // Basic combinators for composing parsers
 
-  let item = P(function | LazyList.Nil -> [] | LazyList.Cons(c, r) -> [c,r])
+  let item = P(function | LazyList.Nil -> [] | LazyList.Cons(c, r) -> [c,r.Value])
 
   let (<|>) (P p1) (P p2) = 
     P(fun input -> 

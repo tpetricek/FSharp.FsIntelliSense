@@ -8,8 +8,10 @@ open System
 open System.IO
 open System.Collections.Generic
 
+open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.SourceCodeServices
 open FSharp.InteractiveAutocomplete.Parsing
+open FSharp.Compiler.Reflection
 
 // --------------------------------------------------------------------------------------
 // IntelliSense agent - provides easier an access to F# IntelliSense service
@@ -41,14 +43,14 @@ type internal IntelliSenseAgent() =
   let checker = InteractiveChecker.Create(ignore)
 
   /// Creates an empty "Identifier" token (we need it when getting ToolTip)
-  let identToken = 176 // FsParser.tagOfToken(FsParser.IDENT(""))
+  let identToken : int = FSharpCompiler.Current.``Parser.token.Tags``?IDENT
 
   /// Calls F# IntelliSense service repeatedly in an (asynchronous) loop
   /// until the type check request succeeds
   let rec waitForTypeCheck(opts:RequestOptions, untypedInfo) = async {
     let info = 
       checker.TypeCheckSource
-        ( untypedInfo, opts.FileName, 0, opts.Source, 
+        ( untypedInfo, opts.FileName, identToken, opts.Source, 
           opts.Options, IsResultObsolete(fun () -> false) ) 
     match info with
     | TypeCheckSucceeded(res) when res.TypeCheckInfo.IsSome ->
@@ -105,7 +107,7 @@ type internal IntelliSenseAgent() =
   /// Returns default F# compiler options for the specified script file (FSX)
   member x.CreateScriptOptions(file, source) =
     RequestOptions
-      ( checker.GetCheckOptionsFromScriptRoot(file, source),
+      ( checker.GetCheckOptionsFromScriptRoot(file, source, DateTime.Now),
         file, source )
 
   /// Get errors from the last parse request
@@ -137,7 +139,7 @@ type internal IntelliSenseAgent() =
         match info with 
         | Some(info) ->
             // Get items & generate output
-            let decls = info.GetDeclarations(pos, lineStr, (longName, residue), identToken)
+            let decls = info.GetDeclarations(pos, lineStr, (longName, residue), 0, defaultArg time 1000)
             for d in decls.Items do Console.WriteLine(d.Name)
         | None -> ()
       with :? OperationCanceledException -> ()

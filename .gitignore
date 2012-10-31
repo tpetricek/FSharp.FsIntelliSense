@@ -1,0 +1,5 @@
+*~
+bin/*
+src/obj/*
+src/bin/*
+src/*.userprefs
